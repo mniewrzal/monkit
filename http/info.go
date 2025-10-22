@@ -68,6 +68,19 @@ func TraceInfoFromHeader(header HeaderGetter, allowedBaggage ...string) (rv Trac
 	traceParent := header.Get(traceParentHeader)
 	traceState := header.Get(traceStateHeader)
 	baggage := header.Get(baggageHeader)
+	bm := map[string]string{}
+	if baggage != "" {
+		for _, kv := range strings.Split(baggage, ",") {
+			if key, value, ok := strings.Cut(kv, "="); ok {
+				for _, b := range allowedBaggage {
+					if key == b {
+						bm[key] = value
+						break
+					}
+				}
+			}
+		}
+	}
 
 	if traceParent != "" {
 		parts := strings.Split(traceParent, "-")
@@ -91,19 +104,6 @@ func TraceInfoFromHeader(header HeaderGetter, allowedBaggage ...string) (rv Trac
 			return rv
 		}
 
-		bm := map[string]string{}
-		if baggage != "" {
-			for _, kv := range strings.Split(baggage, ",") {
-				if key, value, ok := strings.Cut(kv, "="); ok {
-					for _, b := range allowedBaggage {
-						if key == b {
-							bm[key] = value
-							break
-						}
-					}
-				}
-			}
-		}
 		return TraceInfo{
 			TraceId:  &traceID,
 			ParentId: &parentID,
@@ -116,6 +116,7 @@ func TraceInfoFromHeader(header HeaderGetter, allowedBaggage ...string) (rv Trac
 	if strings.Contains(traceState, "sampled=true") {
 		return TraceInfo{
 			Sampled: true,
+			Baggage: bm,
 		}
 	}
 	return rv
